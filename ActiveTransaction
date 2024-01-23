@@ -1,6 +1,6 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -8,71 +8,46 @@ public class ActiveTransaction {
 
 	private static final String url = "jdbc:mysql://localhost:3306/db1";
 	private static final String user = "root";
-	private static final String password = "xxxx";
+	private static final String password = "xxxx!";
 
 	private static Connection connection;
 
 	public static void main(String[] args) throws SQLException {
 
 		try {
-			connection = DriverManager.getConnection(url, user, password);
-			// change auto commit status
-			connection.setAutoCommit(false);
-			// Execute update query
-			updateQuery();
-			// commit
-			connection.commit();
-			// System.out.println("commit successful");
-
-			boolean isActiveTransaction = isCurrentActiveTransaction();
-			System.out.println("Is there an active transaction? " + isActiveTransaction);
-			// System.out.println("commit successful");
-
-		} catch (Exception e) {
-			try {
-				// rollback
-				if (connection != null) {
-					connection.rollback();
-					System.out.println("rolling back");
-				}
-			} catch (SQLException e1) {
-				e1.printStackTrace();
-			}
-			e.printStackTrace();
-
-		} finally {
-			try {
-				if (connection != null) {
-					connection.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private static void updateQuery() throws SQLException {
-		String sql = "INSERT into Employees values (23,'alice','IT',2500)";
-		try (Statement statement = connection.createStatement()) {
-			statement.executeUpdate(sql);
-		} catch (SQLException e) {
-			throw e;
-		}
-	}
-
-	private static boolean isCurrentActiveTransaction() throws SQLException {
-		String sql = "SELECT COUNT(1) AS count FROM INFORMATION_SCHEMA.INNODB_TRX WHERE trx_mysql_thread_id = CONNECTION_ID()";
-
-		try (PreparedStatement preparedStatement = connection.prepareStatement(sql);
-				var resultSet = preparedStatement.executeQuery()) {
-
-			if (resultSet.next()) {
-				int count = resultSet.getInt("count");
-				return count > 0;
-			}
-		}
-
-		return false;
-	}
-
+            connection = DriverManager.getConnection(url, user, password);
+            connection.setAutoCommit(false);
+            updateQuery();
+            System.out.println("Current Active Transaction : " + isCurrentActiveTransaction());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+        }
+    }
+    private static void updateQuery() throws SQLException {
+        String sql = "INSERT into Employees values (24,'alice','IT',2500)";
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(sql);
+        } catch (SQLException e) {
+            throw e;
+        }
+    }
+    private static boolean isCurrentActiveTransaction() throws SQLException {
+        int transactionCount = 0;
+        String sql = "SELECT \n" +
+                "    COUNT(1) AS count\n" +
+                "FROM\n" +
+                "    INFORMATION_SCHEMA.INNODB_TRX\n" +
+                "WHERE\n" +
+                "    trx_mysql_thread_id = CONNECTION_ID()";
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            if (resultSet.next()) {
+                transactionCount = resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw e;
+        }
+        return transactionCount > 0;
+    }
 }
